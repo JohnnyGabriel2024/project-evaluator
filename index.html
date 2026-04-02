@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Evaluador de Proyectos</title>
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    width: 420px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+}
+
+h2 {
+    text-align: center;
+    color: #2c5364;
+}
+
+label {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 15px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+#btn {
+    background: #2c5364;
+    color: white;
+}
+
+#btn:hover {
+    background: #1e3c4a;
+}
+
+#resetBtn {
+    background: #bdc3c7;
+}
+
+#resetBtn:hover {
+    background: #95a5a6;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f4f6f8;
+    font-size: 14px;
+}
+
+.good { color: #1b8a3b; font-weight: bold; }
+.bad { color: #c0392b; font-weight: bold; }
+.neutral { color: #555; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Evaluador de Proyectos</h2>
+
+    <label>Inversión Inicial</label>
+    <input id="investment" placeholder="Ej: 1000">
+
+    <label>Flujos de Caja</label>
+    <input id="cashflows" placeholder="Ej: 300,400,500">
+
+    <label>Tasa de Descuento</label>
+    <input id="rate" placeholder="Ej: 0.1">
+
+    <button id="btn">Evaluar Proyecto</button>
+    <button id="resetBtn">Limpiar / Reiniciar</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+
+document.getElementById("btn").addEventListener("click", evaluate);
+document.getElementById("resetBtn").addEventListener("click", resetForm);
+
+function resetForm() {
+    document.getElementById("investment").value = "";
+    document.getElementById("cashflows").value = "";
+    document.getElementById("rate").value = "";
+    document.getElementById("result").innerHTML = "";
+}
+
+function npv(rate, cashflows) {
+    let total = 0;
+    for (let t = 0; t < cashflows.length; t++) {
+        total += cashflows[t] / Math.pow(1 + rate, t);
+    }
+    return total;
+}
+
+function irr(cashflows) {
+    let rate = 0.1;
+
+    for (let i = 0; i < 1000; i++) {
+        let f = 0;
+        let df = 0;
+
+        for (let t = 0; t < cashflows.length; t++) {
+            f += cashflows[t] / Math.pow(1 + rate, t);
+            df += -t * cashflows[t] / Math.pow(1 + rate, t + 1);
+        }
+
+        if (df === 0) return null;
+
+        let newRate = rate - f / df;
+
+        if (Math.abs(newRate - rate) < 1e-6) {
+            return newRate;
+        }
+
+        rate = newRate;
+    }
+
+    return null;
+}
+
+function evaluate() {
+
+    const investment = parseFloat(document.getElementById("investment").value);
+    const rawFlows = document.getElementById("cashflows").value;
+    const rate = parseFloat(document.getElementById("rate").value);
+
+    if (isNaN(investment) || !rawFlows || isNaN(rate)) {
+        alert("Completa todos los campos correctamente");
+        return;
+    }
+
+    let flows = rawFlows.split(",").map(x => parseFloat(x.trim()));
+
+    if (flows.some(isNaN)) {
+        alert("Flujos inválidos");
+        return;
+    }
+
+    const cashflows = [-investment, ...flows];
+
+    const npvValue = npv(rate, cashflows);
+    const irrValue = irr(cashflows);
+
+    let irrText = irrValue !== null
+        ? (irrValue * 100).toFixed(2) + "%"
+        : "No calculable";
+
+    let decision, css, explanation;
+
+    if (npvValue > 0) {
+        decision = "✔ Conviene invertir";
+        css = "good";
+
+        explanation = `
+        Este proyecto genera valor.<br><br>
+        - Inversión: <strong>${investment}</strong><br>
+        - Valor actual: <strong>${(investment + npvValue).toFixed(2)}</strong><br>
+        - Ganancia: <strong>${npvValue.toFixed(2)}</strong><br><br>
+        TIR (${irrText}) > tasa (${(rate*100).toFixed(2)}%)<br><br>
+        <strong>Conclusión:</strong> Conviene.
+        `;
+
+    } else if (npvValue < 0) {
+        decision = "✖ No conviene invertir";
+        css = "bad";
+
+        explanation = `
+        Este proyecto no alcanza el rendimiento requerido.<br><br>
+        - Inversión: <strong>${investment}</strong><br>
+        - Valor actual: <strong>${(investment + npvValue).toFixed(2)}</strong><br>
+        - Falta: <strong>${Math.abs(npvValue).toFixed(2)}</strong><br><br>
+        TIR (${irrText}) < tasa (${(rate*100).toFixed(2)}%)<br><br>
+        <strong>Conclusión:</strong> Mejor alternativa (banco).
+        `;
+    } else {
+        decision = "➖ Proyecto indiferente";
+        css = "neutral";
+        explanation = "Recuperas exactamente lo invertido.";
+    }
+
+    document.getElementById("result").innerHTML = `
+        <p><strong>VAN:</strong> ${npvValue.toFixed(2)}</p>
+        <p><strong>TIR:</strong> ${irrText}</p>
+        <p class="${css}">${decision}</p>
+        <hr>
+        <p>${explanation}</p>
+    `;
+}
+
+</script>
+
+</body>
+</html>
