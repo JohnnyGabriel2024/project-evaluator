@@ -2,82 +2,125 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Evaluador de Proyectos</title>
 
 <style>
+* {
+    box-sizing: border-box;
+}
+
 body {
+    margin: 0;
     font-family: 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
-    height: 100vh;
+    align-items: flex-start;
 }
 
+/* CONTENEDOR */
 .container {
+    width: 100%;
+    max-width: 420px;
+    margin: 20px;
     background: #ffffff;
-    padding: 30px;
+    padding: 20px;
     border-radius: 12px;
-    width: 420px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
+/* TITULO */
 h2 {
     text-align: center;
     color: #2c5364;
+    font-size: 20px;
+    margin-bottom: 20px;
 }
 
+/* LABEL */
 label {
+    font-size: 13px;
     font-weight: bold;
-    font-size: 14px;
+    color: #555;
 }
 
+/* INPUT */
 input {
     width: 100%;
-    padding: 10px;
-    margin: 8px 0 15px;
-    border-radius: 6px;
+    padding: 14px;
+    margin: 6px 0 15px;
+    border-radius: 10px;
     border: 1px solid #ccc;
+    font-size: 16px;
 }
 
+/* BOTONES */
 button {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
+    border-radius: 10px;
     border: none;
-    border-radius: 6px;
+    font-size: 16px;
     font-weight: bold;
+    margin-top: 8px;
     cursor: pointer;
-    margin-top: 5px;
 }
 
+/* BOTÓN PRINCIPAL */
 #btn {
     background: #2c5364;
     color: white;
 }
 
-#btn:hover {
-    background: #1e3c4a;
-}
-
+/* BOTÓN RESET */
 #resetBtn {
-    background: #bdc3c7;
+    background: #ecf0f1;
 }
 
-#resetBtn:hover {
-    background: #95a5a6;
-}
-
+/* RESULTADO */
 .result {
     margin-top: 20px;
     padding: 15px;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #f4f6f8;
     font-size: 14px;
+    line-height: 1.5;
 }
 
+/* COLORES */
 .good { color: #1b8a3b; font-weight: bold; }
 .bad { color: #c0392b; font-weight: bold; }
 .neutral { color: #555; font-weight: bold; }
+
+/* TABLET */
+@media (min-width: 600px) {
+    .container {
+        max-width: 500px;
+        padding: 25px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+}
+
+/* DESKTOP */
+@media (min-width: 900px) {
+    body {
+        align-items: center;
+    }
+
+    .container {
+        max-width: 550px;
+        padding: 30px;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+}
 </style>
 </head>
 
@@ -179,28 +222,11 @@ function evaluate() {
     if (npvValue > 0) {
         decision = "✔ Conviene invertir";
         css = "good";
-
-        explanation = `
-        Este proyecto genera valor.<br><br>
-        - Inversión: <strong>${investment}</strong><br>
-        - Valor actual: <strong>${(investment + npvValue).toFixed(2)}</strong><br>
-        - Ganancia: <strong>${npvValue.toFixed(2)}</strong><br><br>
-        TIR (${irrText}) > tasa (${(rate*100).toFixed(2)}%)<br><br>
-        <strong>Conclusión:</strong> Conviene.
-        `;
-
+        explanation = `Generas valor de ${npvValue.toFixed(2)}. TIR (${irrText}) > tasa (${(rate*100).toFixed(2)}%).`;
     } else if (npvValue < 0) {
         decision = "✖ No conviene invertir";
         css = "bad";
-
-        explanation = `
-        Este proyecto no alcanza el rendimiento requerido.<br><br>
-        - Inversión: <strong>${investment}</strong><br>
-        - Valor actual: <strong>${(investment + npvValue).toFixed(2)}</strong><br>
-        - Falta: <strong>${Math.abs(npvValue).toFixed(2)}</strong><br><br>
-        TIR (${irrText}) < tasa (${(rate*100).toFixed(2)}%)<br><br>
-        <strong>Conclusión:</strong> Mejor alternativa (banco).
-        `;
+        explanation = `Faltan ${Math.abs(npvValue).toFixed(2)}. TIR (${irrText}) < tasa (${(rate*100).toFixed(2)}%).`;
     } else {
         decision = "➖ Proyecto indiferente";
         css = "neutral";
