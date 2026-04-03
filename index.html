@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Evaluador de Proyectos</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 * { box-sizing: border-box; }
 
@@ -23,15 +25,9 @@ body {
     border-radius: 12px;
 }
 
-h2 {
-    text-align: center;
-    color: #2c5364;
-}
+h2 { text-align: center; color: #2c5364; }
 
-label {
-    font-size: 13px;
-    font-weight: bold;
-}
+label { font-size: 13px; font-weight: bold; }
 
 input {
     width: 100%;
@@ -60,6 +56,8 @@ button {
     padding: 15px;
     background: #f4f6f8;
     border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .good { color: green; }
@@ -84,16 +82,18 @@ button {
     <label>Depreciación (por período)</label>
     <input id="depreciation" placeholder="Ej: 50">
 
-    <label>Tasa de impuesto (ej: 0.2)</label>
+    <label>Tasa de impuesto</label>
     <input id="tax" placeholder="Ej: 0.2">
 
-    <label>Tasa de descuento (ej: 0.1)</label>
+    <label>Tasa de descuento</label>
     <input id="rate" placeholder="Ej: 0.1">
 
     <button id="btn">Evaluar Proyecto</button>
     <button id="resetBtn">Limpiar</button>
 
     <div class="result" id="result"></div>
+
+    <canvas id="chart" style="margin-top:20px;"></canvas>
 </div>
 
 <script>
@@ -104,6 +104,7 @@ document.getElementById("resetBtn").addEventListener("click", resetForm);
 function resetForm() {
     document.querySelectorAll("input").forEach(i => i.value = "");
     document.getElementById("result").innerHTML = "";
+    if (chartInstance) chartInstance.destroy();
 }
 
 function npv(rate, cashflows) {
@@ -116,24 +117,55 @@ function npv(rate, cashflows) {
 
 function irr(cashflows) {
     let rate = 0.1;
-
     for (let i = 0; i < 1000; i++) {
         let f = 0, df = 0;
-
         for (let t = 0; t < cashflows.length; t++) {
             f += cashflows[t] / Math.pow(1 + rate, t);
             df += -t * cashflows[t] / Math.pow(1 + rate, t + 1);
         }
-
         if (df === 0) return null;
-
         let newRate = rate - f / df;
         if (Math.abs(newRate - rate) < 1e-6) return newRate;
-
         rate = newRate;
     }
-
     return null;
+}
+
+let chartInstance = null;
+
+function drawChart(cashflows) {
+
+    let rates = [];
+    let values = [];
+
+    for (let r = 0; r <= 0.5; r += 0.01) {
+        rates.push((r * 100).toFixed(0));
+
+        let total = 0;
+        for (let t = 0; t < cashflows.length; t++) {
+            total += cashflows[t] / Math.pow(1 + r, t);
+        }
+        values.push(total);
+    }
+
+    const ctx = document.getElementById('chart');
+
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: rates,
+            datasets: [{
+                label: 'VAN vs Tasa (%)',
+                data: values,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
 }
 
 function evaluate() {
@@ -146,20 +178,17 @@ function evaluate() {
     const rate = parseFloat(document.getElementById("rate").value);
 
     if (sales.length !== costs.length) {
-        alert("Ventas y costos deben tener la misma cantidad de períodos");
+        alert("Ventas y costos deben coincidir");
         return;
     }
 
     let cashflows = [-investment];
 
     for (let i = 0; i < sales.length; i++) {
-
         let result = sales[i] - costs[i] - depreciation;
         let taxes = result * tax;
         let net = result - taxes;
-
         let flow = net + depreciation;
-
         cashflows.push(flow);
     }
 
@@ -169,27 +198,23 @@ function evaluate() {
     let irrText = irrValue ? (irrValue * 100).toFixed(2) + "%" : "No calculable";
     let rateText = (rate * 100).toFixed(2) + "%";
 
-    let decision = npvValue > 0 ? "✔ Conviene" : "✖ No conviene";
-    let css = npvValue > 0 ? "good" : "bad";
-
-    // 👉 NUEVO COMENTARIO INTELIGENTE
     let comment;
 
     if (irrValue !== null && irrValue < 0) {
         comment = `
         Este proyecto no logra recuperar la inversión.<br><br>
-        Aunque genera ingresos, no son suficientes para cubrir lo invertido en términos financieros.<br><br>
+        Aunque genera ingresos, no son suficientes para cubrir lo invertido.<br><br>
         <strong>Interpretación:</strong> perderías dinero en términos reales.<br>
-        <strong>Recomendación:</strong> no invertir en este proyecto.
+        <strong>Recomendación:</strong> no invertir.
         `;
     } 
     else if (npvValue > 0) {
         comment = `
         Este proyecto genera valor.<br><br>
         - Ganancia adicional: <strong>${npvValue.toFixed(2)}</strong><br>
-        - Rentabilidad del proyecto (TIR): <strong>${irrText}</strong><br>
-        - Rentabilidad mínima exigida: <strong>${rateText}</strong><br><br>
-        <strong>Interpretación:</strong> el proyecto rinde más que tu alternativa (ej: banco).<br>
+        - TIR: <strong>${irrText}</strong><br>
+        - Tasa exigida: <strong>${rateText}</strong><br><br>
+        <strong>Interpretación:</strong> rinde más que tu alternativa.<br>
         <strong>Recomendación:</strong> conviene invertir.
         `;
     } 
@@ -197,19 +222,16 @@ function evaluate() {
         comment = `
         Este proyecto no genera suficiente valor.<br><br>
         - Pérdida de valor: <strong>${Math.abs(npvValue).toFixed(2)}</strong><br>
-        - Rentabilidad del proyecto (TIR): <strong>${irrText}</strong><br>
-        - Rentabilidad mínima exigida: <strong>${rateText}</strong><br><br>
-        <strong>Interpretación:</strong> el proyecto rinde menos que tu alternativa (ej: banco).<br>
+        - TIR: <strong>${irrText}</strong><br>
+        - Tasa exigida: <strong>${rateText}</strong><br><br>
+        <strong>Interpretación:</strong> rinde menos que tu alternativa.<br>
         <strong>Recomendación:</strong> no conviene invertir.
         `;
     } 
     else {
         comment = `
-        El proyecto recupera exactamente lo invertido.<br><br>
-        - Rentabilidad del proyecto: <strong>${irrText}</strong><br>
-        - Rentabilidad exigida: <strong>${rateText}</strong><br><br>
-        <strong>Interpretación:</strong> no ganas ni pierdes valor.<br>
-        <strong>Recomendación:</strong> es indiferente invertir o no.
+        El proyecto es indiferente.<br><br>
+        No ganas ni pierdes valor.<br>
         `;
     }
 
@@ -217,10 +239,11 @@ function evaluate() {
         <p><strong>Flujos:</strong> ${cashflows.join(", ")}</p>
         <p><strong>VAN:</strong> ${npvValue.toFixed(2)}</p>
         <p><strong>TIR:</strong> ${irrText}</p>
-        <p class="${css}">${decision}</p>
         <hr>
-        <p><strong>${comment}</strong></p>
+        <p>${comment}</p>
     `;
+
+    drawChart(cashflows);
 }
 
 </script>
