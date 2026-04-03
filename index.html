@@ -176,16 +176,41 @@ function evaluate() {
     let comment;
 
     if (irrValue !== null && irrValue < 0) {
-        comment = `El proyecto no logra recuperar la inversión en términos financieros. (TIR negativa: ${irrText})`;
+        comment = `
+        Este proyecto no logra recuperar la inversión.<br><br>
+        Aunque genera ingresos, no son suficientes para cubrir lo invertido en términos financieros.<br><br>
+        <strong>Interpretación:</strong> perderías dinero en términos reales.<br>
+        <strong>Recomendación:</strong> no invertir en este proyecto.
+        `;
     } 
     else if (npvValue > 0) {
-        comment = `Generas valor de ${npvValue.toFixed(2)}. TIR (${irrText}) > tasa (${rateText}).`;
+        comment = `
+        Este proyecto genera valor.<br><br>
+        - Ganancia adicional: <strong>${npvValue.toFixed(2)}</strong><br>
+        - Rentabilidad del proyecto (TIR): <strong>${irrText}</strong><br>
+        - Rentabilidad mínima exigida: <strong>${rateText}</strong><br><br>
+        <strong>Interpretación:</strong> el proyecto rinde más que tu alternativa (ej: banco).<br>
+        <strong>Recomendación:</strong> conviene invertir.
+        `;
     } 
     else if (npvValue < 0) {
-        comment = `Destruyes valor de ${Math.abs(npvValue).toFixed(2)}. TIR (${irrText}) < tasa (${rateText}).`;
+        comment = `
+        Este proyecto no genera suficiente valor.<br><br>
+        - Pérdida de valor: <strong>${Math.abs(npvValue).toFixed(2)}</strong><br>
+        - Rentabilidad del proyecto (TIR): <strong>${irrText}</strong><br>
+        - Rentabilidad mínima exigida: <strong>${rateText}</strong><br><br>
+        <strong>Interpretación:</strong> el proyecto rinde menos que tu alternativa (ej: banco).<br>
+        <strong>Recomendación:</strong> no conviene invertir.
+        `;
     } 
     else {
-        comment = `No generas ni destruyes valor. TIR (${irrText}) = tasa (${rateText}).`;
+        comment = `
+        El proyecto recupera exactamente lo invertido.<br><br>
+        - Rentabilidad del proyecto: <strong>${irrText}</strong><br>
+        - Rentabilidad exigida: <strong>${rateText}</strong><br><br>
+        <strong>Interpretación:</strong> no ganas ni pierdes valor.<br>
+        <strong>Recomendación:</strong> es indiferente invertir o no.
+        `;
     }
 
     document.getElementById("result").innerHTML = `
