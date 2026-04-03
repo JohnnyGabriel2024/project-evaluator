@@ -61,15 +61,34 @@ button {
     transition: all 0.4s ease;
 }
 
-/* 🔥 NUEVO: efecto visual */
+/* 🔥 Highlight */
 .result.highlight {
     border: 2px solid #2c5364;
     box-shadow: 0 0 10px rgba(44, 83, 100, 0.4);
     transform: scale(1.02);
 }
 
-.good { color: green; }
-.bad { color: red; }
+/* 🔽 Indicador */
+.scroll-hint {
+    text-align: center;
+    font-size: 13px;
+    color: #2c5364;
+    margin-top: 10px;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.4s ease;
+}
+
+.scroll-hint.show {
+    opacity: 1;
+    transform: translateY(0);
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
 </style>
 </head>
 
@@ -99,6 +118,11 @@ button {
     <button id="btn">Evaluar Proyecto</button>
     <button id="resetBtn">Limpiar</button>
 
+    <!-- 🔽 Micro-copy -->
+    <div id="scrollHint" class="scroll-hint">
+        ↓ Desliza para ver resultados ↓
+    </div>
+
     <div class="result" id="result"></div>
 
     <canvas id="chart" style="margin-top:20px;"></canvas>
@@ -113,6 +137,7 @@ function resetForm() {
     document.querySelectorAll("input").forEach(i => i.value = "");
     document.getElementById("result").innerHTML = "";
     document.getElementById("result").classList.remove("highlight");
+    document.getElementById("scrollHint").classList.remove("show");
     if (chartInstance) chartInstance.destroy();
 }
 
@@ -238,10 +263,19 @@ function evaluate() {
         <p>${comment}</p>
     `;
 
-    // 🔥 ACTIVAR EFECTO VISUAL
+    // 🔥 Highlight
     resultBox.classList.remove("highlight");
-    void resultBox.offsetWidth; // reinicia animación
+    void resultBox.offsetWidth;
     resultBox.classList.add("highlight");
+
+    // 🔽 Mostrar hint
+    const hint = document.getElementById("scrollHint");
+    hint.classList.add("show");
+
+    // 🔽 Auto scroll
+    setTimeout(() => {
+        resultBox.scrollIntoView({ behavior: "smooth" });
+    }, 300);
 
     drawChart(cashflows);
 }
