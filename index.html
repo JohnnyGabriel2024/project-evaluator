@@ -6,121 +6,64 @@
 <title>Evaluador de Proyectos</title>
 
 <style>
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
 }
 
-/* CONTENEDOR */
 .container {
     width: 100%;
     max-width: 420px;
-    margin: 20px;
-    background: #ffffff;
+    margin: 20px auto;
+    background: white;
     padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-/* TITULO */
 h2 {
     text-align: center;
     color: #2c5364;
-    font-size: 20px;
-    margin-bottom: 20px;
 }
 
-/* LABEL */
 label {
     font-size: 13px;
     font-weight: bold;
-    color: #555;
 }
 
-/* INPUT */
 input {
     width: 100%;
-    padding: 14px;
+    padding: 12px;
     margin: 6px 0 15px;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid #ccc;
     font-size: 16px;
 }
 
-/* BOTONES */
 button {
     width: 100%;
     padding: 14px;
-    border-radius: 10px;
+    border-radius: 8px;
     border: none;
     font-size: 16px;
-    font-weight: bold;
     margin-top: 8px;
     cursor: pointer;
 }
 
-/* BOTÓN PRINCIPAL */
-#btn {
-    background: #2c5364;
-    color: white;
-}
+#btn { background: #2c5364; color: white; }
+#resetBtn { background: #ecf0f1; }
 
-/* BOTÓN RESET */
-#resetBtn {
-    background: #ecf0f1;
-}
-
-/* RESULTADO */
 .result {
     margin-top: 20px;
     padding: 15px;
-    border-radius: 10px;
     background: #f4f6f8;
-    font-size: 14px;
-    line-height: 1.5;
+    border-radius: 8px;
 }
 
-/* COLORES */
-.good { color: #1b8a3b; font-weight: bold; }
-.bad { color: #c0392b; font-weight: bold; }
-.neutral { color: #555; font-weight: bold; }
-
-/* TABLET */
-@media (min-width: 600px) {
-    .container {
-        max-width: 500px;
-        padding: 25px;
-    }
-
-    h2 {
-        font-size: 22px;
-    }
-}
-
-/* DESKTOP */
-@media (min-width: 900px) {
-    body {
-        align-items: center;
-    }
-
-    .container {
-        max-width: 550px;
-        padding: 30px;
-    }
-
-    h2 {
-        font-size: 24px;
-    }
-}
+.good { color: green; }
+.bad { color: red; }
 </style>
 </head>
 
@@ -132,14 +75,23 @@ button {
     <label>Inversión Inicial</label>
     <input id="investment" placeholder="Ej: 1000">
 
-    <label>Flujos de Caja</label>
-    <input id="cashflows" placeholder="Ej: 300,400,500">
+    <label>Ventas por período</label>
+    <input id="sales" placeholder="Ej: 1000,1000,1000">
 
-    <label>Tasa de Descuento</label>
+    <label>Costos/Gastos por período</label>
+    <input id="costs" placeholder="Ej: 600,600,600">
+
+    <label>Depreciación (por período)</label>
+    <input id="depreciation" placeholder="Ej: 50">
+
+    <label>Tasa de impuesto (ej: 0.2)</label>
+    <input id="tax" placeholder="Ej: 0.2">
+
+    <label>Tasa de descuento (ej: 0.1)</label>
     <input id="rate" placeholder="Ej: 0.1">
 
     <button id="btn">Evaluar Proyecto</button>
-    <button id="resetBtn">Limpiar / Reiniciar</button>
+    <button id="resetBtn">Limpiar</button>
 
     <div class="result" id="result"></div>
 </div>
@@ -150,9 +102,7 @@ document.getElementById("btn").addEventListener("click", evaluate);
 document.getElementById("resetBtn").addEventListener("click", resetForm);
 
 function resetForm() {
-    document.getElementById("investment").value = "";
-    document.getElementById("cashflows").value = "";
-    document.getElementById("rate").value = "";
+    document.querySelectorAll("input").forEach(i => i.value = "");
     document.getElementById("result").innerHTML = "";
 }
 
@@ -168,8 +118,7 @@ function irr(cashflows) {
     let rate = 0.1;
 
     for (let i = 0; i < 1000; i++) {
-        let f = 0;
-        let df = 0;
+        let f = 0, df = 0;
 
         for (let t = 0; t < cashflows.length; t++) {
             f += cashflows[t] / Math.pow(1 + rate, t);
@@ -179,10 +128,7 @@ function irr(cashflows) {
         if (df === 0) return null;
 
         let newRate = rate - f / df;
-
-        if (Math.abs(newRate - rate) < 1e-6) {
-            return newRate;
-        }
+        if (Math.abs(newRate - rate) < 1e-6) return newRate;
 
         rate = newRate;
     }
@@ -193,52 +139,62 @@ function irr(cashflows) {
 function evaluate() {
 
     const investment = parseFloat(document.getElementById("investment").value);
-    const rawFlows = document.getElementById("cashflows").value;
+    const sales = document.getElementById("sales").value.split(",").map(Number);
+    const costs = document.getElementById("costs").value.split(",").map(Number);
+    const depreciation = parseFloat(document.getElementById("depreciation").value);
+    const tax = parseFloat(document.getElementById("tax").value);
     const rate = parseFloat(document.getElementById("rate").value);
 
-    if (isNaN(investment) || !rawFlows || isNaN(rate)) {
-        alert("Completa todos los campos correctamente");
+    if (sales.length !== costs.length) {
+        alert("Ventas y costos deben tener la misma cantidad de períodos");
         return;
     }
 
-    let flows = rawFlows.split(",").map(x => parseFloat(x.trim()));
+    let cashflows = [-investment];
 
-    if (flows.some(isNaN)) {
-        alert("Flujos inválidos");
-        return;
+    for (let i = 0; i < sales.length; i++) {
+
+        let result = sales[i] - costs[i] - depreciation;
+        let taxes = result * tax;
+        let net = result - taxes;
+
+        let flow = net + depreciation;
+
+        cashflows.push(flow);
     }
-
-    const cashflows = [-investment, ...flows];
 
     const npvValue = npv(rate, cashflows);
     const irrValue = irr(cashflows);
 
-    let irrText = irrValue !== null
-        ? (irrValue * 100).toFixed(2) + "%"
-        : "No calculable";
+    let irrText = irrValue ? (irrValue * 100).toFixed(2) + "%" : "No calculable";
+    let rateText = (rate * 100).toFixed(2) + "%";
 
-    let decision, css, explanation;
+    let decision = npvValue > 0 ? "✔ Conviene" : "✖ No conviene";
+    let css = npvValue > 0 ? "good" : "bad";
 
-    if (npvValue > 0) {
-        decision = "✔ Conviene invertir";
-        css = "good";
-        explanation = `Generas valor de ${npvValue.toFixed(2)}. TIR (${irrText}) > tasa (${(rate*100).toFixed(2)}%).`;
-    } else if (npvValue < 0) {
-        decision = "✖ No conviene invertir";
-        css = "bad";
-        explanation = `Faltan ${Math.abs(npvValue).toFixed(2)}. TIR (${irrText}) < tasa (${(rate*100).toFixed(2)}%).`;
-    } else {
-        decision = "➖ Proyecto indiferente";
-        css = "neutral";
-        explanation = "Recuperas exactamente lo invertido.";
+    // 👉 NUEVO COMENTARIO INTELIGENTE
+    let comment;
+
+    if (irrValue !== null && irrValue < 0) {
+        comment = `El proyecto no logra recuperar la inversión en términos financieros. (TIR negativa: ${irrText})`;
+    } 
+    else if (npvValue > 0) {
+        comment = `Generas valor de ${npvValue.toFixed(2)}. TIR (${irrText}) > tasa (${rateText}).`;
+    } 
+    else if (npvValue < 0) {
+        comment = `Destruyes valor de ${Math.abs(npvValue).toFixed(2)}. TIR (${irrText}) < tasa (${rateText}).`;
+    } 
+    else {
+        comment = `No generas ni destruyes valor. TIR (${irrText}) = tasa (${rateText}).`;
     }
 
     document.getElementById("result").innerHTML = `
+        <p><strong>Flujos:</strong> ${cashflows.join(", ")}</p>
         <p><strong>VAN:</strong> ${npvValue.toFixed(2)}</p>
         <p><strong>TIR:</strong> ${irrText}</p>
         <p class="${css}">${decision}</p>
         <hr>
-        <p>${explanation}</p>
+        <p><strong>${comment}</strong></p>
     `;
 }
 
