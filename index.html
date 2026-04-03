@@ -58,6 +58,14 @@ button {
     border-radius: 8px;
     font-size: 14px;
     line-height: 1.5;
+    transition: all 0.4s ease;
+}
+
+/* 🔥 NUEVO: efecto visual */
+.result.highlight {
+    border: 2px solid #2c5364;
+    box-shadow: 0 0 10px rgba(44, 83, 100, 0.4);
+    transform: scale(1.02);
 }
 
 .good { color: green; }
@@ -104,6 +112,7 @@ document.getElementById("resetBtn").addEventListener("click", resetForm);
 function resetForm() {
     document.querySelectorAll("input").forEach(i => i.value = "");
     document.getElementById("result").innerHTML = "";
+    document.getElementById("result").classList.remove("highlight");
     if (chartInstance) chartInstance.destroy();
 }
 
@@ -162,9 +171,7 @@ function drawChart(cashflows) {
                 tension: 0.3
             }]
         },
-        options: {
-            responsive: true
-        }
+        options: { responsive: true }
     });
 }
 
@@ -203,45 +210,38 @@ function evaluate() {
     if (irrValue !== null && irrValue < 0) {
         comment = `
         Este proyecto no logra recuperar la inversión.<br><br>
-        Aunque genera ingresos, no son suficientes para cubrir lo invertido.<br><br>
-        <strong>Interpretación:</strong> perderías dinero en términos reales.<br>
+        <strong>Interpretación:</strong> perderías dinero.<br>
         <strong>Recomendación:</strong> no invertir.
         `;
-    } 
-    else if (npvValue > 0) {
+    } else if (npvValue > 0) {
         comment = `
         Este proyecto genera valor.<br><br>
-        - Ganancia adicional: <strong>${npvValue.toFixed(2)}</strong><br>
+        - Ganancia: <strong>${npvValue.toFixed(2)}</strong><br>
         - TIR: <strong>${irrText}</strong><br>
-        - Tasa exigida: <strong>${rateText}</strong><br><br>
-        <strong>Interpretación:</strong> rinde más que tu alternativa.<br>
+        - Tasa: <strong>${rateText}</strong><br><br>
         <strong>Recomendación:</strong> conviene invertir.
         `;
-    } 
-    else if (npvValue < 0) {
+    } else {
         comment = `
-        Este proyecto no genera suficiente valor.<br><br>
-        - Pérdida de valor: <strong>${Math.abs(npvValue).toFixed(2)}</strong><br>
-        - TIR: <strong>${irrText}</strong><br>
-        - Tasa exigida: <strong>${rateText}</strong><br><br>
-        <strong>Interpretación:</strong> rinde menos que tu alternativa.<br>
+        Este proyecto no genera valor suficiente.<br><br>
         <strong>Recomendación:</strong> no conviene invertir.
-        `;
-    } 
-    else {
-        comment = `
-        El proyecto es indiferente.<br><br>
-        No ganas ni pierdes valor.<br>
         `;
     }
 
-    document.getElementById("result").innerHTML = `
+    const resultBox = document.getElementById("result");
+
+    resultBox.innerHTML = `
         <p><strong>Flujos:</strong> ${cashflows.join(", ")}</p>
         <p><strong>VAN:</strong> ${npvValue.toFixed(2)}</p>
         <p><strong>TIR:</strong> ${irrText}</p>
         <hr>
         <p>${comment}</p>
     `;
+
+    // 🔥 ACTIVAR EFECTO VISUAL
+    resultBox.classList.remove("highlight");
+    void resultBox.offsetWidth; // reinicia animación
+    resultBox.classList.add("highlight");
 
     drawChart(cashflows);
 }
