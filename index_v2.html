@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evaluador de Proyectos</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+}
+
+.container {
+    max-width: 420px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+input,button {
+    width: 100%;
+    padding: 12px;
+    margin: 6px 0;
+    border-radius: 8px;
+}
+
+button { background:#2c5364;color:white;border:none; }
+
+.result {
+    margin-top:20px;
+    padding:15px;
+    background:#f4f6f8;
+    border-radius:8px;
+}
+
+.highlight {
+    border:2px solid #2c5364;
+}
+
+.scroll-hint {
+    text-align:center;
+    font-size:13px;
+    opacity:0;
+}
+
+.scroll-hint.show {
+    opacity:1;
+}
+
+table {
+    width:100%;
+    margin-top:10px;
+    border-collapse:collapse;
+    font-size:12px;
+}
+
+td,th { border:1px solid #ddd;padding:6px;text-align:center; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Evaluador de Proyectos</h2>
+
+<input id="investment" placeholder="Inversión inicial">
+<input id="sales" placeholder="Ventas (1200,1200,1200)">
+<input id="costs" placeholder="Costos (600,600,600)">
+<input id="depreciation" placeholder="Depreciación">
+<input id="tax" placeholder="Impuesto (0.2)">
+<input id="rate" placeholder="Tasa (0.1)">
+
+<button id="btn">Evaluar</button>
+<button onclick="resetApp()">Limpiar</button>
+
+<div id="scrollHint" class="scroll-hint">↓ Desliza para ver resultados ↓</div>
+
+<div id="result" class="result"></div>
+
+<canvas id="chart"></canvas>
+
+<div id="table"></div>
+
+</div>
+
+<script>
+
+let chart = null;
+
+document.getElementById("btn").addEventListener("click", evaluate);
+
+function npv(rate,cf){
+    return cf.reduce((a,v,t)=>a+v/Math.pow(1+rate,t),0);
+}
+
+function irr(cf){
+    let r=0.1;
+    for(let i=0;i<1000;i++){
+        let f=0,df=0;
+        for(let t=0;t<cf.length;t++){
+            f+=cf[t]/Math.pow(1+r,t);
+            df+=-t*cf[t]/Math.pow(1+r,t+1);
+        }
+        if(df===0) return null;
+        let nr=r-f/df;
+        if(!isFinite(nr)) return null;
+        if(Math.abs(nr-r)<1e-6) return nr;
+        r=nr;
+    }
+    return null;
+}
+
+function evaluate(){
+
+    const inv = parseFloat(document.getElementById("investment").value);
+    const sales = document.getElementById("sales").value.split(',').map(Number);
+    const costs = document.getElementById("costs").value.split(',').map(Number);
+    const dep = parseFloat(document.getElementById("depreciation").value);
+    const tax = parseFloat(document.getElementById("tax").value);
+    const rate = parseFloat(document.getElementById("rate").value);
+
+    if(sales.length !== costs.length){
+        alert("Ventas y costos deben coincidir");
+        return;
+    }
+
+    let cf=[-inv];
+    let rows="";
+
+    for(let i=0;i<sales.length;i++){
+        let res = sales[i]-costs[i]-dep;
+        let taxVal = res*tax;
+        let net = res-taxVal;
+        let flow = net+dep;
+
+        cf.push(flow);
+
+        rows+=`<tr>
+        <td>${i+1}</td>
+        <td>${sales[i]}</td>
+        <td>${costs[i]}</td>
+        <td>${flow.toFixed(2)}</td>
+        </tr>`;
+    }
+
+    let npvVal = npv(rate,cf);
+    let irrVal = irr(cf);
+
+    let irrText = irrVal!==null ? (irrVal*100).toFixed(2)+"%" : "No calculable";
+    let rateText = (rate*100).toFixed(2)+"%";
+
+    /* 🔥 EXPLICACIÓN SIMPLE Y CLARA */
+    let explanation = "";
+
+    if(irrVal === null){
+        explanation = `
+        No se pudo calcular la TIR.<br><br>
+        👉 El proyecto no tiene un punto claro de rentabilidad.
+        `;
+    }
+    else if(irrVal < 0){
+        explanation = `
+        Este proyecto NO recupera la inversión.<br><br>
+        👉 Aunque genera ingresos, no alcanzan.<br>
+        👉 En simple: perderías dinero.<br><br>
+        👉 Recomendación: NO invertir.
+        `;
+    }
+    else if(npvVal > 0){
+        explanation = `
+        Este proyecto genera valor.<br><br>
+        VAN: ${npvVal.toFixed(2)}<br>
+        TIR: ${irrText}<br>
+        Tasa: ${rateText}<br><br>
+        👉 Ganas más que tu alternativa (ej: banco).<br>
+        👉 Recomendación: invertir.
+        `;
+    }
+    else{
+        explanation = `
+        El proyecto no genera suficiente valor.<br><br>
+        👉 Rinde menos que tu alternativa.<br>
+        👉 Recomendación: no invertir.
+        `;
+    }
+
+    document.getElementById("result").innerHTML=`
+    <b>Flujos:</b> ${cf.join(', ')}<br>
+    <b>VAN:</b> ${npvVal.toFixed(2)}<br>
+    <b>TIR:</b> ${irrText}<br>
+    <hr>
+    ${explanation}
+    `;
+
+    document.getElementById("result").classList.add("highlight");
+    document.getElementById("scrollHint").classList.add("show");
+
+    setTimeout(()=>{
+        document.getElementById("result").scrollIntoView({behavior:"smooth"});
+    },300);
+
+    drawChart(cf);
+    drawTable(rows);
+}
+
+function drawChart(cf){
+
+    let rates=[],values=[];
+
+    for(let r=0;r<=0.5;r+=0.01){
+        rates.push((r*100).toFixed(0));
+        values.push(npv(r,cf));
+    }
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"),{
+        type:'line',
+        data:{
+            labels:rates,
+            datasets:[
+                {label:'VAN',data:values},
+                {label:'VAN = 0',data:rates.map(()=>0)}
+            ]
+        }
+    });
+}
+
+function drawTable(rows){
+    document.getElementById("table").innerHTML=`
+    <table>
+    <tr><th>Año</th><th>Ventas</th><th>Costos</th><th>Flujo</th></tr>
+    ${rows}
+    </table>`;
+}
+
+function resetApp(){
+    location.reload();
+}
+
+</script>
+
+</body>
+</html>
